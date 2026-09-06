@@ -1,0 +1,21 @@
+# Không đưa artifact build của máy host vào image — vừa nặng vừa gây lỗi
+# do lẫn file biên dịch cho Windows vào container Linux.
+**/bin/
+**/obj/
+**/out/
+
+**/.vs/
+**/.vscode/
+**/.idea/
+**/.git/
+**/.gitignore
+**/.dockerignore
+**/Dockerfile*
+**/docker-compose*.yml
+
+**/*.user
+**/*.suo
+**/node_modules/
+**/secrets.dev.yaml
+**/appsettings.Development.json
+README.md

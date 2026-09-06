@@ -1,0 +1,23 @@
+# ───────────── .NET ─────────────
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+
+# ───────────── Node / Vite (admin-fe) ─────────────
+node_modules/
+dist/
+npm-debug.log*
+
+# ───────────── Env / bí mật cục bộ ─────────────
+.env
+.env.local
+*.local
+
+# ───────────── Claude Code (cấu hình cục bộ) ─────────────
+.claude/settings.local.json
+
+# ───────────── OS ─────────────
+Thumbs.db
+.DS_Store

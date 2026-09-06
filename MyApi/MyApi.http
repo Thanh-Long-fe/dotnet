@@ -1,0 +1,110 @@
+@MyApi_HostAddress = http://localhost:5133
+# Khi chạy bằng Docker thì đổi sang cổng 8080:
+# @MyApi_HostAddress = http://localhost:8080
+
+### Endpoint mẫu của template (không cần đăng nhập)
+GET {{MyApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+# ─────────────────────────────────────────────────────────────
+# ĐĂNG NHẬP ADMIN
+# Chạy request dưới đây trước; @token tự lấy từ response.
+# ─────────────────────────────────────────────────────────────
+
+### Đăng nhập
+# @name login
+POST {{MyApi_HostAddress}}/api/admin/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin@123456"
+}
+
+### Sai mật khẩu -> kỳ vọng 401
+POST {{MyApi_HostAddress}}/api/admin/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "sai-mat-khau"
+}
+
+@token = {{login.response.body.accessToken}}
+
+### Token còn dùng được không
+GET {{MyApi_HostAddress}}/api/admin/auth/me
+Authorization: Bearer {{token}}
+
+# ─────────────────────────────────────────────────────────────
+# QUẢN LÝ USER
+# ─────────────────────────────────────────────────────────────
+
+### Thiếu token -> kỳ vọng 401
+GET {{MyApi_HostAddress}}/api/admin/users
+Accept: application/json
+
+### Danh sách user
+GET {{MyApi_HostAddress}}/api/admin/users
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### Tạo user -> kỳ vọng 201, deviceId = null
+POST {{MyApi_HostAddress}}/api/admin/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "email": "user@example.com",
+  "password": "123456",
+  "expiredAt": "2026-12-31T23:59:59Z"
+}
+
+### Tạo lại cùng email (viết HOA) -> kỳ vọng 409
+POST {{MyApi_HostAddress}}/api/admin/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "email": "USER@example.com",
+  "password": "123456",
+  "expiredAt": "2026-12-31T23:59:59Z"
+}
+
+### Dữ liệu sai -> kỳ vọng 400
+POST {{MyApi_HostAddress}}/api/admin/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "email": "khong-phai-email",
+  "password": "123",
+  "expiredAt": "2020-01-01T00:00:00Z"
+}
+
+### Lấy 1 user
+GET {{MyApi_HostAddress}}/api/admin/users/000000000000000000000001
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### Cập nhật user
+PUT {{MyApi_HostAddress}}/api/admin/users/000000000000000000000001
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "email": "user@example.com",
+  "role": "user",
+  "expiredAt": "2027-06-30T23:59:59Z",
+  "isActive": true
+}
+
+### Gỡ thiết bị để user đăng nhập được trên máy mới -> kỳ vọng 204
+POST {{MyApi_HostAddress}}/api/admin/users/000000000000000000000001/reset-device
+Authorization: Bearer {{token}}
+
+### Xóa user
+DELETE {{MyApi_HostAddress}}/api/admin/users/000000000000000000000001
+Authorization: Bearer {{token}}
+
+###

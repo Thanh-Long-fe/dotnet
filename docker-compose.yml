@@ -1,0 +1,86 @@
+# Compose v2 — không cần khai báo "version:" nữa (đã bỏ từ lâu).
+# Chạy:  docker compose up -d --build
+# Dừng:  docker compose down          (thêm -v để xóa luôn dữ liệu Mongo)
+
+services:
+  # ─────────────────────────── MongoDB ───────────────────────────
+  mongo:
+    image: mongo:8
+    container_name: myapi-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    ports:
+      # Mở ra host để `dotnet run` ở máy thật cũng kết nối được,
+      # và để Compass/mongosh nối vào xem dữ liệu.
+      - "27017:27017"
+    volumes:
+      # Named volume: dữ liệu sống sót qua `docker compose down`
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - myapi-net
+
+  # ────────────── Mongo Express: GUI xem dữ liệu ──────────────
+  # Mở http://localhost:8081  (đăng nhập admin / admin)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: myapi-mongo-express
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/?authSource=admin
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    networks:
+      - myapi-net
+
+  # ───────────────────────── API .NET ─────────────────────────
+  api:
+    build:
+      # Context là thư mục gốc để sau này thêm project khác vẫn build được
+      context: .
+      dockerfile: MyApi/Dockerfile
+    container_name: myapi-api
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      # host:container — dùng 8080 để không đụng cổng 5133 của `dotnet run`
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Dấu __ (hai gạch dưới) = dấu : trong appsettings.json
+      # -> MongoDb__ConnectionString ghi đè MongoDb:ConnectionString
+      # Trong mạng Docker, host của Mongo là TÊN SERVICE "mongo", không phải localhost
+      MongoDb__ConnectionString: mongodb://root:example@mongo:27017/?authSource=admin
+      MongoDb__DatabaseName: myapi
+      # Tài khoản admin + khóa ký token. Thiếu thì app không khởi động.
+      # Lên production: đọc từ secret của hạ tầng, đừng để giá trị thật trong file này.
+      AdminAuth__Email: admin@example.com
+      AdminAuth__PasswordHash: AQAAAAIAAYagAAAAEO9C5jN4cxLoviYH5khEjfjO4pTjht9GVeXfIc8UOEWspOzUKXx8FjEeCxdpcf5lXw==
+      AdminAuth__Jwt__Key: dev-only-jwt-signing-key-doi-truoc-khi-len-that-0123456789
+      # Khóa ký của User FE — PHẢI khác khóa admin ở trên.
+      UserAuth__Jwt__Key: dev-only-user-jwt-signing-key-doi-truoc-khi-len-that-9876543210
+      # Dấu __ ngăn cách cấp; số thứ tự ngăn cách phần tử mảng.
+      Cors__AllowedOrigins__0: http://localhost:5173
+    networks:
+      - myapi-net
+
+volumes:
+  mongo-data:
+
+networks:
+  myapi-net:
+    driver: bridge
